@@ -38,6 +38,32 @@ try {
 }
    
 }
+async function ask_cluade1(question) {
+const model = new ChatAnthropic({
+  modelName: "claude-3-7-sonnet-latest",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  maxTokens: 1024,
+  temperature: 0.7,
+});
 
+const messages=[
+    new SystemMessage("You are an helpful assistant"),
+    new HumanMessage({content:question})
+]
 
-module.exports={ask_cluade}
+console.log(messages);
+
+try {
+    const response = await model.invoke(messages);
+
+    console.log(response.content)
+        return response.content
+    
+} catch (error) {
+    console.log(error.message);
+    return error.message
+}
+   
+}
+
+module.exports={ask_cluade, ask_cluade1}

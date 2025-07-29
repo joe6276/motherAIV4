@@ -9,7 +9,7 @@ const bot = new TelegramBot(process.env.TELEGRAM, {polling:true})
 const {loginUserBot,getUserDepartment} = require("../controller/userController")
 const {createFileinDateFolder,uploadVideoToDrive} =require('../Google/index');
 const { ask_question } = require("../pinecone");
-
+const {ask_cluade1} =require("../ScriptTool")
 
 const loginSteps = new Map();
 
@@ -261,7 +261,11 @@ async function handleAuthenticatedMessage(chatId, userMessage, username, session
       return     
 
    }
-   
+   else if(department.trim().toLowerCase()==="general"){
+    const res = await ask_cluade1(userMessage)
+    await bot.sendMessage(chatId, res);
+    return 
+   }
    else if(department){
     const res = await ask_question(userMessage, department)
     await bot.sendMessage(chatId, res);
