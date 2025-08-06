@@ -68,7 +68,6 @@ function getToolDefinitions() {
 registerTool(
     'ask_question',
     async (args) => {
-        console.log(`Querying database with question: "${args.question}" for department: "${args.department}"`)
         return await ask_question(args.question, args.department)
     },
    "Queries the specialized knowledge database for a specific department. Use this tool when you need to answer questions that require department-specific expertise or information stored in the database",
@@ -153,7 +152,7 @@ async function invokeTool(message, maxIterations = 15) {
 
     while (iteration < maxIterations) {
         iteration++
-        console.log(`Iteration ${iteration}: Processing message`)
+    
 
         try {
             const response = await client.messages.create({
@@ -163,26 +162,24 @@ async function invokeTool(message, maxIterations = 15) {
                 tools: getToolDefinitions()
             })
 
-            console.log('Claude response:', JSON.stringify(response.content, null, 2))
+         
 
             // Add Claude's response to messages
             messages.push({
                 role: 'assistant',
                 content: response.content
             })
-
             // Check if Claude wants to use a tool
             const toolUse = response.content.find(c => c.type === 'tool_use')
             
             if (toolUse) {
                 const toolName = toolUse.name
                 const toolArgs = toolUse.input
-                console.log(`Executing tool: ${toolName} with args:`, toolArgs)
+          
                 // await sendStatuses(`Executing Agent: ${toolName}`)
                 try {
                     const toolResult = await executeTool(toolName, toolArgs)
-                    console.log('Tool result:', toolResult)
-                    
+                 
                     // Add tool result to messages
                     messages.push({
                         role: 'user',

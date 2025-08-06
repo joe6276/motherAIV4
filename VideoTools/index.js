@@ -19,8 +19,7 @@ if (!existsSync(videosDir)) {
 async function generateVideo(prompt) {
   try {
 
-    //  await sendStatuses("Executing Video Generation with Prompt... "+ prompt)
-    console.log(`Starting video generation for prompt: "${prompt}"`);
+
     
     let operation = await ai.models.generateVideos({
       model: "veo-3.0-generate-preview",
@@ -33,7 +32,7 @@ async function generateVideo(prompt) {
 
     // Wait for operation to complete
     while (!operation.done) {
-      console.log("Video generation in progress...");
+     
       await new Promise((resolve) => setTimeout(resolve, 10000));
       operation = await ai.operations.getVideosOperation({
         operation: operation,
@@ -44,8 +43,6 @@ async function generateVideo(prompt) {
     if (operation.response?.generatedVideos?.length > 0) {
       const generatedVideo = operation.response.generatedVideos[0];
       const videoPath = path.join(videosDir, videoName);
-      
-      console.log("Downloading generated video...");
       const resp = await fetch(`${generatedVideo.video?.uri}&key=${GEMINI_API_KEY}`);
       
       if (!resp.ok) {
@@ -65,7 +62,6 @@ async function generateVideo(prompt) {
             const fs = require('fs');
             const stats = fs.statSync(videoPath);
             if (stats.size > 0) {
-              console.log(`Video downloaded successfully. Size: ${stats.size} bytes`);
               resolve();
             } else {
               reject(new Error("Downloaded file is empty"));
@@ -79,7 +75,6 @@ async function generateVideo(prompt) {
         stream.on('error', reject);
       });
       
-      console.log(`Video saved as: ${videoPath}`);
       const vpath = path.join(__dirname, 'generated_videos', videoName);
       await uploadVideoToDrive(vpath)
       return videoName;

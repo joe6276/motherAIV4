@@ -20,8 +20,7 @@ const index = pc.index('coltium');
 
 async function ask_question(question,department) {
     try {
-        console.log("KNOWLEDGE BASE CALLED ...");
-        
+            
         // await sendStatuses("Executing Knowledge Base with question: "+ question)
         const embeddings = new OpenAIEmbeddings({
             apiKey: process.env.API_KEY,
@@ -62,13 +61,11 @@ async function ask_question(question,department) {
         )
 
         const response = await conversationChain.call({ question })
-
-        // console.log(response.text);
         return response.text;
 
 
     } catch (error) {
-        console.log("Error:", error);
+       
         throw error;
     }
 }

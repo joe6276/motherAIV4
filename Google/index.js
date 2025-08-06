@@ -3,12 +3,15 @@ const dotenv = require("dotenv")
 const path = require("path")
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 const fs= require('fs')
+const xlsx = require('xlsx')
+const pdfParse = require("pdf-parse")
+const { parse: csvParse } = require('csv-parse/sync');
 
 const CLIENT_ID ="1034743257294-k1ua0drj0kibbsn3mfasl7rcs6i6r0f0.apps.googleusercontent.com"
 const CLIENT_SECRET = "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"
 const REDIRECT_URL = "https://developers.google.com/oauthplayground"
-const REFRESH_TOKEN = "1//048d4Er9qpib2CgYIARAAGAQSNwF-L9IrRkQfZ_7fJk9Qr4QpFZ2jHsBmjufP7IZfVtDiF7aSjG8LS25QF5DJkBGQIlcnKEp3_1c"
-
+const REFRESH_TOKEN = "1//04h8ZjG1r5io0CgYIARAAGAQSNwF-L9Ir5pLn3PH7tU3g_omVwC5usTojFyXIUZyzc2ZTsxRTVyLImo8O0FidfafVgO1rQG7DWF0"
+ const downloadDir = path.join(process.cwd(), 'downloads');
 const oauthclient = new google.auth.OAuth2(
     CLIENT_ID,
     CLIENT_SECRET,
@@ -58,7 +61,7 @@ async function findorCreateDateFolder(folder) {
 
         if (searchResponse.data.files && searchResponse.data.files.length > 0) {
             // Folder exists, return its ID
-            console.log(`Folder '${folderName}' already exists`);
+    
             return searchResponse.data.files[0].id;
         }
 
@@ -73,7 +76,6 @@ async function findorCreateDateFolder(folder) {
             fields: 'id, name'
         });
 
-        console.log(`Created new folder: ${folderName}`);
         return createResponse.data.id;
 
     } catch (error) {
@@ -119,12 +121,7 @@ async function createFileinDateFolder(content) {
         console.error('Error creating file in date folder:', error);
     }
 }
-// async function run() {
-//     const parentFolderId = await createFileinDateFolder("Hello There")
-//     console.log(parentFolderId);
 
-
-// }
 
 async function uploadVideoToDrive(videoPath){
 try {
@@ -148,11 +145,7 @@ try {
       fields: 'id,name,size,mimeType'
     });
 
-    
-    // console.log('Upload successful!');
-    // console.log('File ID:', response.data.id);
-    // console.log('File Name:', response.data.name);
-    // console.log('File Size:', response.data.size)
+
 
 } catch (error) {
      console.error('Upload failed:', error.message);
@@ -160,7 +153,133 @@ try {
 }
 
 
+
+async function downloadFile(fileId, fileName) {
+  const filePath = path.join(downloadDir, fileName);
+
+  // Create the directory if it doesn't exist
+  if (!fs.existsSync(downloadDir)) {
+fs.mkdirSync(downloadDir, { recursive: true });
+  }
+
+  // Delete existing file
+  if (fs.existsSync(filePath)) {
+   
+    fs.unlinkSync(filePath);
+  }
+
+  const res = await drive.files.get(
+    { fileId, alt: 'media' }, 
+    { responseType: 'stream' }
+  );
+
+  const dest = fs.createWriteStream(filePath);
+  
+
+  
+  return new Promise((resolve, reject) => {
+    res.data
+      .pipe(dest)
+      .on('finish', () => {
+     
+        resolve(filePath);
+      })
+      .on('error', (err) => {
+        console.error("Stream error:", err);
+        reject(err);
+      });
+    
+    res.data.on('error', (err) => {
+      console.error("Source stream error:", err);
+      reject(err);
+    });
+  });
+}
+function readCSV(filePath) {
+  return new Promise((resolve, reject) => {
+    try {
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const records = csvParse(fileContent, {
+        columns: true, // assumes the first row is headers
+        skip_empty_lines: true
+      });
+      resolve(JSON.stringify(records, null, 2));
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+async function readFileContent(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case '.docx':
+      const docxResult = await mammoth.extractRawText({ path: filePath });
+      return docxResult.value;
+
+    case '.pdf':
+      const pdfData = await pdfParse(fs.readFileSync(filePath));
+      return pdfData.text;
+
+    case '.csv':
+      return await readCSV(filePath);
+
+    case '.xlsx':
+    case '.xls':
+      const workbook = xlsx.readFile(filePath);
+      const firstSheet = workbook.SheetNames[0];
+      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+      return JSON.stringify(sheetData, null, 2);
+
+    default:
+      return '❌ Unsupported file type';
+  }
+}
+
+async function readAllFilesInFolder(folderId) {
+  let raw_text=""
+  try {
+    const res = await drive.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: 'files(id, name, mimeType)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    
+    });
+    const files = res.data.files;
+    if (!files.length) {
+     
+      return;
+    }
+
+   
+
+    for (const file of files) {
+     
+      const filePath = await downloadFile(file.id, file.name);      
+    
+      const content = await readFileContent(filePath);
+      raw_text+="\n---\n"
+      raw_text+= content
+    }
+       return raw_text
+  } catch (err) {
+    console.error(' Error:', err.message);
+  }
+}
+
+
+async function getBrandNameText(){
+    const id= await getFolderId("brand")
+    const content= await readAllFilesInFolder(id)
+    return content
+
+}
+
+
+
 module.exports={
     createFileinDateFolder,
-    uploadVideoToDrive
+    uploadVideoToDrive,
+    getBrandNameText
 }

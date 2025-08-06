@@ -145,30 +145,25 @@ async function registerUser (req,res){
 
 async function getUserByEmailAdmin(email) {
   try {
-    console.log('Searching for user with email:', email);
+   
     
     const userRecord = await admin.auth().getUserByEmail(email);
-    console.log('Found user in Auth:', userRecord.uid);
-    
+ 
     // Then get additional user data from Firestore
     const userDoc = await db.collection('users').doc(userRecord.uid).get();
-    console.log('Firestore doc exists:', userDoc.exists);
-    
+  
     if (!userDoc.exists) {
-      console.log('User exists in Auth but not in Firestore');
       return null;
     }
     
     const userData = userDoc.data();
-    console.log('User data from Firestore:', userData);
-    
+ 
     return {
       id: userDoc.id,
       ...userData
     };
   } catch (error) {
     if (error.code === 'auth/user-not-found') {
-      console.log('User not found in Firebase Auth');
       return null;
     }
     console.error('Error getting user by email:', error);
